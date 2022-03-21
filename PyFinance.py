@@ -69,20 +69,15 @@ def getMonthSummary(month, year, col, path="."):
     # Create formated date
     df["Date_fmt"] = df["Date"].dt.strftime("%d-%b-%Y")
     
-    # Calculate Totals
-    totals = {"Name" : "Totals", "Category": "TOTAL", "Date_fmt": "", "Amount" : df["Amount"].sum(), "Courtney" : df["Courtney"].sum()}
-    
-    # Place them at the end of the dataframe
-    df = df.append(totals, ignore_index=True)
     
     # Create formatted cost rows
     df["Amount_fmt"] = df.apply(lambda row: "£{:0,.2f}".format(row["Amount"]).replace("£-", "-£"), axis=1)
     df["Courtney_fmt"] = df.apply(lambda row: "£{:0,.2f}".format(row["Courtney"]).replace("£-", "-£"), axis=1)
     
-    return df
+    return df, min_date.strftime("%Y-%b")
 #------------------------------------------------------------------------------
 
-def save_dfs(df, path="."):
+def save_dfs(df, root="."):
     """
     Save att the relevent dataframes.
 
@@ -91,40 +86,93 @@ def save_dfs(df, path="."):
     df : Pandas DataFrame
         The dataframe, usually a month summary.
         
-    path : Str
-        The path to where the output files are saved.
+    root : Str
+        The path to the root directory where the output files are saved.
 
     Returns
     -------
     None.
 
     """
-    def write_html(_df, name="default.html", cols=None):
-        with open(os.path.join(path, name), "w", encoding="utf-8") as f:
+    def write_html(_df, name="default.html", cols=None, _root=root):
+        with open(os.path.join(_root, name), "w", encoding="utf-8") as f:
             _df.to_html(f, columns=cols, col_space=150, justify="center", index=False)
     #--------------------------------------------------------------------------
     
+    value_root = os.path.join(root, "value_sorted")
+    
+    if not os.path.isdir(root):
+        os.makedirs(root)
+        
+    if not os.path.isdir(value_root):
+        os.makedirs(value_root)
+    #--------------------------------------------------------------------------    
+       
     # Pretty formatting
     replace_dict = {"Date_fmt" : "Date", "Amount_fmt" : "Amount", "Courtney_fmt" : "Courtney", "Courtney" : "Courtney_num", "Amount" : "Amount_num", "Date" : "Date_dt"}
-    #df_fmt       = df.drop(["Date", "Amount", "Courtney"], axis=1)
     df_fmt = df.rename(replace_dict, axis=1)
     
-    
+    #--------------------------------------------------------------------------
+    # All Enteries
+    #--------------------------------------------------------------------------
     # Save all to csv (all columns)
-    df_fmt.to_csv("test.csv", index=False)
+    df_fmt.to_csv(os.path.join(root, "month-overview.csv"), index=False)
     
     # Save all to html
-    write_html(df_fmt, "test.html", ["Name", "Date", "Category", "Amount", "Courtney"])
+    # Calculate Totals
+    totals = {"Name" : "Totals", "Category": "TOTAL", "Date_fmt": "",
+              "Amount"   : "£{:0,.2f}".format(df_fmt["Amount_num"].sum()).replace("£-", "-£"),
+              "Courtney" : "£{:0,.2f}".format(df_fmt["Courtney_num"].sum()).replace("£-", "-£")}
     
+    # Place them at the end of the dataframe
+    df_all = df_fmt.append(totals, ignore_index=True)
+    
+    df_all_value = df_all.sort_values("Amount_num")
+    
+    write_html(df_all,       "month-overview.html", ["Name", "Date", "Category", "Amount", "Courtney"])
+    write_html(df_all_value, "month-overview.html", ["Name", "Date", "Category", "Amount", "Courtney"], value_root)
+    
+    #--------------------------------------------------------------------------
+    # Courtney Only Enteries
+    #--------------------------------------------------------------------------
     # Save just courtney to html
     c_df = df_fmt[df["Courtney"] != 0]
-    write_html(c_df, "courtney.html", ["Name", "Date", "Category", "Amount", "Courtney"])
     
+    # Calculate Totals
+    totals = {"Name" : "Totals", "Category": "TOTAL", "Date": "",
+              "Amount"   : "£{:0,.2f}".format(c_df["Amount_num"].sum()).replace("£-", "-£"),
+              "Courtney" : "£{:0,.2f}".format(c_df["Courtney_num"].sum()).replace("£-", "-£")}
+
+    # Place them at the end of the dataframe
+    c_df = c_df.append(totals, ignore_index=True)
+    
+    c_df_value = c_df.sort_values("Courtney_num")
+    
+    write_html(c_df,       "courtney.html", ["Name", "Date", "Category", "Amount", "Courtney"])
+    write_html(c_df_value, "courtney.html", ["Name", "Date", "Category", "Amount", "Courtney"], value_root)
+    
+    #--------------------------------------------------------------------------
+    # Harry Only Enteries
+    #--------------------------------------------------------------------------
     # Save just harry to html
     h_df = df_fmt[df["Courtney"] == 0]
-    write_html(h_df, "harry.html", ["Name", "Date", "Category", "Amount"])
     
+    # Calculate Totals
+    totals = {"Name" : "Totals", "Category": "TOTAL", "Date": "",
+              "Amount"   : "£{:0,.2f}".format(h_df["Amount_num"].sum()).replace("£-", "-£"),
+              "Courtney" : "£{:0,.2f}".format(h_df["Courtney_num"].sum()).replace("£-", "-£")}
+
+    # Place them at the end of the dataframe
+    h_df = h_df.append(totals, ignore_index=True)
     
+    h_df_value = h_df.sort_values("Amount_num")
+    
+    write_html(h_df,       "harry.html", ["Name", "Date", "Category", "Amount"])
+    write_html(h_df_value, "harry.html", ["Name", "Date", "Category", "Amount"], value_root)
+    
+    #--------------------------------------------------------------------------
+    # Each Category
+    #--------------------------------------------------------------------------
     # For each category
     for cat in df_fmt["Category"].unique():
         if cat != "TOTAL":
@@ -132,14 +180,15 @@ def save_dfs(df, path="."):
             
             # Calculate Totals
             totals = {"Name" : "Totals", "Category": "TOTAL", "Date": "",
-                      "Amount" : "£{:0,.2f}".format(w_df["Amount_num"].sum()).replace("£-", "-£"),
+                      "Amount"   : "£{:0,.2f}".format(w_df["Amount_num"].sum()).replace("£-", "-£"),
                       "Courtney" : "£{:0,.2f}".format(w_df["Courtney_num"].sum()).replace("£-", "-£")}
     
             # Place them at the end of the dataframe
-            w_df = w_df.append(totals, ignore_index=True)
-            
+            w_df       = w_df.append(totals, ignore_index=True)
+            w_df_value = w_df.sort_values("Amount_num")
         
-            write_html(w_df, "{}.html".format(cat.lower()), ["Name", "Date", "Amount", "Courtney"])
+            write_html(w_df,       "{}.html".format(cat.lower()), ["Name", "Date", "Amount", "Courtney"])
+            write_html(w_df_value, "{}.html".format(cat.lower()), ["Name", "Date", "Amount", "Courtney"], value_root)
 
 #------------------------------------------------------------------------------
 #------------------------------------------------------------------------------
@@ -151,9 +200,10 @@ expenses = db.expenses
 #------------------------------------------------------------------------------
 
 
-df = getMonthSummary("Jan", 2022, expenses)
 
-save_dfs(df)
+df, str_ym = getMonthSummary("Jan", 2022, expenses)
+
+save_dfs(df, os.path.join("..", "data", str_ym))
 
 print(df)
 
