@@ -1,14 +1,13 @@
-# -*- coding: utf-8 -*-
 """
-Created on Tue Mar 22 00:02:37 2022
+All the database logic and minipulation happens in this module.
+"""
 
-@author: Harry
-"""
 import os
 import pymongo
 import calendar
 import pandas   as pd
 from   datetime import datetime
+
 #------------------------------------------------------------------------------
 def openCollection(address="localhost", port=27017):
     myclient = pymongo.MongoClient(address, port)
@@ -79,7 +78,7 @@ def getMonthSummary(month, year, col, path="."):
     df["Amount_fmt"] = df.apply(lambda row: "£{:0,.2f}".format(row["Amount"]).replace("£-", "-£"), axis=1)
     df["Courtney_fmt"] = df.apply(lambda row: "£{:0,.2f}".format(row["Courtney"]).replace("£-", "-£"), axis=1)
     
-    return df, min_date.strftime("%Y-%b")
+    return df, min_date.strftime("%Y-%m_%B")
 
 #------------------------------------------------------------------------------
 def save_dfs(df, root="."):

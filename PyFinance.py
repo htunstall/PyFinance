@@ -1,30 +1,19 @@
-# -*- coding: utf-8 -*-
 """
-Created on Sun Feb  6 18:50:35 2022
-
-@author: Harry
+Main module for PyFinance. When executed it will bring up the gui to navigate
+the software.
 """
-import os
-import database
 
-#------------------------------------------------------------------------------
+__version__ = "1.0.0"
+__author__  = "Harry Tunstall"
 
-expenses   = database.openCollection()
+import gui 
 
-df, str_ym = database.getMonthSummary("Jan", 2022, expenses)
+licence = "PyFinance  Copyright (C) 2022  {}\n\n".format(__author__) + \
+          "This program comes with ABSOLUTELY NO WARRANTY\n" + \
+          "This is free software, and you are welcome to redistribute it\n" + \
+          "under certain conditions."
 
-database.save_dfs(df, os.path.join("..", "data", str_ym))
-
-print(df)
-
-
-    
-
-
-
-
-
-
-
-
-    
+about   = "Version: {}\n\n{}".format(__version__, licence)
+       
+if __name__ == "__main__":
+    gui.openApp(about)
