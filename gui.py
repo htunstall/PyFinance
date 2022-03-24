@@ -1,12 +1,14 @@
-# -*- coding: utf-8 -*-
 """
-Created on Fri Mar 18 23:30:32 2022
+Here all the code for creating the GUIs is located, and how the main brunt of
+the software works together.
+"""
 
-@author: Harry
-"""
+import os
 import time
 import tkinter
+import tkinter.filedialog
 import calendar
+
 from   datetime             import datetime
 from   tkinter              import ttk
 from   tkinter.font         import Font
@@ -15,37 +17,60 @@ from   tkinter.scrolledtext import ScrolledText
 import database
 import lookup
 
-
 #------------------------------------------------------------------------------
 # Global Variables
 #------------------------------------------------------------------------------
-min_width = 690 # Std: 650
+min_width  = 750  # Std: 650
 min_height = 500
-xpad = 3
-ixpad = 2
-ypad = 4
-iypad= 2
-
-history = 10 # How many previous values should we show
+xpad       = 3
+ixpad      = 2
+ypad       = 4
+iypad      = 2
+history    = 10   # How many previous values should we show
 #------------------------------------------------------------------------------
+
 def log(logbox, message, blank=False, append=None, colour="black", tag_number=0, font="normal", underline=False, show_time=False):
     """
-    This procedure writes the message to the log box, with various controlable options,
-      for example, the append feild can append font of a different colour to the same line.
+    This procedure writes the message to the log box, with various controlable
+    options, for example, the append feild can append font of a different
+    colour to the same line.
       
-    Variable list:
-        logbox:      The object that is the ScrolledText widget
-        message:     A text string message
-        blank:       If True, then then a blank line is printed to the ScrolledText
-        append:      If this is not None, then this text string is appended to the end of the
-                        message string. The font colour is determined by the colour variable,
-                        and if underline is True the appended text is underlined.
-        colour:      The colour of the appended text
-        tag_number:  This is a unique ID for the appended text, if two IDs match then the
-                        formating of the appended strings will be the same
-        font:        Is the appended text "normal", "bold" etc.
-        underline:   Controls the underline of the appended text
-        show_time:   If True, the time will be prepended to the message like so "(HH:MM) "
+      
+    Parameters
+    ----------
+    logbox : ScrolledText widget object
+        The object that is the ScrolledText widget.
+        
+    message : String
+        The message to qrite to the log box.
+
+    blank : Boolean (Default=False)
+        If True, then then a blank line is printed to the ScrolledText
+    
+    append : String (Default=None)
+        If this is not None, then this text string is appended to the end of
+        the message string. The font colour is determined by the colour
+        variable, and if underline is True the appended text is underlined.
+    
+    colour : String (Default="black")
+        The colour of the appended text.
+        
+    tag_number : Integer (Default=0)
+        This is a unique ID for the appended text, if two IDs match then the
+        formating of the appended strings will be the same.
+        
+    font : String (Default="normal")
+        Is the appended text "normal", "bold" etc.
+        
+    underline : Boolean (Default=False)
+        Controls the underline of the appended text.
+        
+    show_time : Boolean (default=False)
+        If True, the time will be prepended to the message like so "(HH:MM) ".
+    
+    Returns
+    -------
+    None
     """
     _user_message = None
     _size = 10
@@ -83,6 +108,23 @@ def log(logbox, message, blank=False, append=None, colour="black", tag_number=0,
 def wipeLog(logbox, start_i="1.0", end_i=tkinter.END):
     """
     Clear the ScrolledText logbox.
+    
+    Parameters
+    ----------
+    logbox : ScrolledText widget object
+        The object that is the ScrolledText widget.
+        
+    start_i : String (default="1.0")
+        A tkinter index for the location of the cursor in the ScrolledText
+        wdidget.
+        
+    end_i : String (default=tkinter.END)
+        A tkinter index for the location of the cursor in the ScrolledText
+        wdidget.
+
+    Returns
+    -------
+    None
     """
     logbox.config(state="normal")
     logbox.delete(start_i, end_i)
@@ -90,12 +132,24 @@ def wipeLog(logbox, start_i="1.0", end_i=tkinter.END):
 #------------------------------------------------------------------------------
 
 def enterExpense():
+    """
+    This is the procedure that defines the GUI for entering new expenses into 
+    the database. It contains sub-procedures to complete all of the necessary
+    actions.
+
+    Returns
+    -------
+    None.
+
+    """
     #--------------------------------------------------------------------------
     # Load the database
     #--------------------------------------------------------------------------
     expenses = database.openCollection()
     
-    # Set procedure variables
+    #--------------------------------------------------------------------------
+    # Procedure Variables
+    #--------------------------------------------------------------------------
     dp = 3 # Decimal places
     
     def update_courtney(*args):
@@ -108,7 +162,13 @@ def enterExpense():
         else:
             fraction.set(0.5)
            
-            
+    def write_header():
+        header = "{:<60} | {:<10s} | {:<8s} | {:<10s} | {:<10s} | {:<10s}".format("Name of Expense", "Date", "Category", "Amount", "Courtney", "Recurring")
+        row    = "-" * len(header)
+    
+        log(logbox, header)
+        log(logbox, row)
+           
     def log_document(doc):
         # Work out the sinage
         if doc["Amount"] < 0:
@@ -119,8 +179,13 @@ def enterExpense():
             sign = " "
             amount_val   = doc["Amount"]
             courtney_val = doc["Courtney"]
+            
+        if doc["Recurring"]:
+            rec = "Yes"
+        else:
+            rec = "No"
         
-        format_str   = "{:<60} | {:<10s} | {:^8s} | {}£{:>6.2f} | {:8.3f} | {}£{:7.3f}".format(doc["Name"], doc["Date"].strftime("%d-%b-%y"), doc["Category"], sign, amount_val, fraction.get(), sign, courtney_val)
+        format_str   = "{:<60} | {:<10s} | {:^8s} | {}£{:>8.2f} | {}£{:8.2f} | {:10s}".format(doc["Name"], doc["Date"].strftime("%d-%b-%y"), doc["Category"], sign, amount_val, sign, courtney_val, rec)
         
         log(logbox, format_str)
         
@@ -134,10 +199,12 @@ def enterExpense():
            
         if category.get().upper() not in lookup.valid_categories:
             tkinter.messagebox.showwarning("Warning!", "The entered category is not valid")
+            cat_w.focus_force()
             return
         
         if name.get() == "":
             tkinter.messagebox.showwarning("Warning!", "The name must be a nonzero length string")
+            name_w.focus_force()
             return
             
         doc = {"Name"      : name.get(),
@@ -160,6 +227,9 @@ def enterExpense():
         fraction.set(0.5)
         courtney.set(0.0)
         
+        # Move the focus back to the name field
+        name_w.focus_set()
+        
     def remove_last_expense(expenses):
         # _id include date submitted, hence able to retreive the last item
         doc = list(expenses.find().sort("_id", -1).limit(1))[0]
@@ -167,10 +237,14 @@ def enterExpense():
         
         # Remove it from the logbox        
         wipeLog(logbox, "end-2l", "end-1l")
+        
+    def clear_log():
+        wipeLog(logbox)
+        write_header()
 
     
     #--------------------------------------------------------------------------
-    # Variables
+    # Tkinter Variables
     #--------------------------------------------------------------------------
     current_date = datetime.now()
     name         = tkinter.StringVar()
@@ -185,6 +259,7 @@ def enterExpense():
     #--------------------------------------------------------------------------
     
     expense_window = tkinter.Toplevel()
+    expense_window.focus_set()
     expense_window.title("Expense")
     expense_window.minsize(width=min_width, height=min_height)
     expense_window.resizable(width=True, height=True)
@@ -284,6 +359,11 @@ def enterExpense():
     undo_bt = tkinter.Button(expense_values, text="Undo", command=lambda:remove_last_expense(expenses))
     undo_bt.grid(row=1, column=10, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
     
+    # Clear Log button
+    clear_bt = tkinter.Button(expense_values, text="Clear Log", command=clear_log)
+    clear_bt.grid(row=2, column=9, columnspan=2, sticky="nesw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    
+    
     # Pack the log frame
     log_frame.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
     
@@ -291,11 +371,7 @@ def enterExpense():
     # Fill the log frame
     #--------------------------------------------------------------------------
     # Header
-    header       = "{:<60} | {:<10s} | {:<8s} | {:<8s} | {:<8s} | {:<9s}".format("Name of Expense", "Date", "Category", "Amount", "Fraction", "Courtney")
-    row          = "-" * len(header)
-    
-    log(logbox, header)
-    log(logbox, row)
+    write_header()
 
     #--------------------------------------------------------------------------
     # Initial Enteries
@@ -306,26 +382,111 @@ def enterExpense():
 
     for doc in expenses.find({"Date" : {"$in" : dates}}).sort("Date", 1):
         log_document(doc)
-
-    
-    
+        
+    # Move the focus back to the name field
+    name_w.focus_force()
 #------------------------------------------------------------------------------
 
+def monthQuery():
+    """
+    This defines the GUI for the user to complete a query for a specific month.
 
-top = tkinter.Tk()
+    Returns
+    -------
+    None.
 
-top.title("PyFinance")
-top.minsize(width=min_width, height=min_height)
-top.resizable(width=True, height=True)
+    """
+    def do_query(expenses):
+        df, str_ym = database.getMonthSummary(month.get(), year.get(), expenses)
+        database.save_dfs(df, os.path.join(path.get(), str_ym))
+        
+        tkinter.messagebox.showinfo("Complete", "The querys have been saved to file.")
 
-# Buttons
-master_buttons = tkinter.LabelFrame(top, text="Operations")
-master_buttons.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    def browse_folder():
+        path.set(tkinter.filedialog.askdirectory())
+        
+    #--------------------------------------------------------------------------
+    # Load the database
+    #--------------------------------------------------------------------------
+    expenses = database.openCollection()
+    
+    #--------------------------------------------------------------------------
+    # Tkinter Variables
+    #--------------------------------------------------------------------------
+    current_date = datetime.now()
+    month        = tkinter.StringVar(value=current_date.strftime("%b"))
+    year         = tkinter.IntVar(value=current_date.year)
+    path         = tkinter.StringVar(value=os.path.abspath(os.path.join("..", "data")))
+    #--------------------------------------------------------------------------
+    
+    query_window = tkinter.Toplevel()
+    query_window.focus_set()
+    query_window.title("Month Query")
+    query_window.minsize(width=min_width, height=min_height)
+    query_window.resizable(width=True, height=True)
+    
+    #--------------------------------------------------------------------------
+    # Month/Year Selection
+    #--------------------------------------------------------------------------
+    month_frame = tkinter.LabelFrame(query_window, text="Month and Year to Query")
+    month_w     = ttk.Combobox(month_frame, values=lookup.months_list, textvariable=month, width=5)
+    year_w      = ttk.Entry(month_frame, textvariable=year, width=5)
+    
+    # Submit Button
+    submit_bt = tkinter.Button(month_frame, text="Submit", command=lambda:do_query(expenses))
 
-enter_bt = tkinter.Button(master_buttons, text="Enter Expense", command=enterExpense)
-enter_bt.pack(side="left", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    
+    month_frame.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    month_w.pack(side="left", anchor="w", padx=xpad, ipadx=ixpad)
+    year_w.pack(side="left", anchor="w", padx=xpad, ipadx=ixpad)
+    submit_bt.pack(side="left", anchor="w", padx=xpad, ipadx=ixpad)
+    
+    
+    save_frame = tkinter.LabelFrame(query_window, text="Save Location")
+    save_frame.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    
+    path_entry = tkinter.Entry(save_frame, textvariable=path, width=70)
+    path_entry.pack(side="left", anchor="w", padx=xpad, ipadx=ixpad)
+    
+    path_bt    = tkinter.Button(save_frame, text="Browse", command=browse_folder)
+    path_bt.pack(side="left", anchor="w", padx=xpad, ipadx=ixpad)
+#------------------------------------------------------------------------------
 
+def openApp(message):
+    """
+    This is the top level window and the root for navigating the whole app.
 
+    Parameters
+    ----------
+    message : String
+        The about string is passed in from the main sofware call.
 
+    Returns
+    -------
+    None.
 
-top.mainloop()
+    """
+    def about():
+        tkinter.messagebox.showinfo("About", message)
+        
+    top = tkinter.Tk()
+    
+    top.title("PyFinance")
+    top.minsize(width=min_width, height=min_height)
+    top.resizable(width=True, height=True)
+    
+    # Buttons
+    master_buttons = tkinter.LabelFrame(top, text="Operations")
+    master_buttons.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    
+    enter_bt  = tkinter.Button(master_buttons, text="Enter Expense", command=enterExpense)
+    enter_bt.pack(side="left", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    
+    mquery_bt = tkinter.Button(master_buttons, text="Month Query", command=monthQuery)
+    mquery_bt.pack(side="left", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+       
+    mquery_bt = tkinter.Button(top, text="About", command=about)
+    mquery_bt.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    
+    
+    top.mainloop()
