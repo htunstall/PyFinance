@@ -44,29 +44,32 @@ def log(logbox, message, blank=False, append=None, colour="black", tag_number=0,
     message : String
         The message to qrite to the log box.
 
-    blank : Boolean (Default=False)
-        If True, then then a blank line is printed to the ScrolledText
+    blank : Boolean, optional
+        If True, then then a blank line is printed to the ScrolledText. The 
+        default is Flase.
     
-    append : String (Default=None)
+    append : String, optional
         If this is not None, then this text string is appended to the end of
         the message string. The font colour is determined by the colour
         variable, and if underline is True the appended text is underlined.
+        The default is None.
     
-    colour : String (Default="black")
-        The colour of the appended text.
+    colour : String, optional
+        The colour of the appended text. The default is "black".
         
-    tag_number : Integer (Default=0)
+    tag_number : Integer, optional
         This is a unique ID for the appended text, if two IDs match then the
-        formating of the appended strings will be the same.
+        formating of the appended strings will be the same. The default is 0.
         
-    font : String (Default="normal")
-        Is the appended text "normal", "bold" etc.
+    font : String. optional
+        Is the appended text "normal", "bold" etc. The default is "normal".
         
-    underline : Boolean (Default=False)
-        Controls the underline of the appended text.
+    underline : Boolean, optional
+        Controls the underline of the appended text. The default is False.
         
-    show_time : Boolean (default=False)
+    show_time : Boolean, optional
         If True, the time will be prepended to the message like so "(HH:MM) ".
+        The default is False.
     
     Returns
     -------
@@ -114,13 +117,13 @@ def wipeLog(logbox, start_i="1.0", end_i=tkinter.END):
     logbox : ScrolledText widget object
         The object that is the ScrolledText widget.
         
-    start_i : String (default="1.0")
+    start_i : String, optional
         A tkinter index for the location of the cursor in the ScrolledText
-        wdidget.
+        wdidget. The default is "1.0".
         
-    end_i : String (default=tkinter.END)
+    end_i : String, optional
         A tkinter index for the location of the cursor in the ScrolledText
-        wdidget.
+        wdidget. The default is tkinter.END.
 
     Returns
     -------

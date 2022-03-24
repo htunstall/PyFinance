@@ -10,6 +10,23 @@ from   datetime import datetime
 
 #------------------------------------------------------------------------------
 def openCollection(address="localhost", port=27017):
+    """
+    Open the collection expenses located in the database finances from the
+    MongoDB and return it.
+
+    Parameters
+    ----------
+    address : String, optional
+        The address of the MongoDB server. The default is "localhost".
+    port : Integer, optional
+        The port the MongoDB server is running on. The default is 27017.
+
+    Returns
+    -------
+    expenses : pymongo Collection
+        This is the expenses Collection where the data is stored.
+
+    """
     myclient = pymongo.MongoClient(address, port)
     expenses = myclient.finances.expenses
     
@@ -22,13 +39,13 @@ def getMonthSummary(month, year, col, path="."):
 
     Parameters
     ----------
-    month : Int/Str
+    month : Integer/String
         The month we are generating a summary for.
-    year : Int
+    year : Integer
         The year we are generating a summary for.
     col : PyMongo Collection
         The collection we are querying.
-    path : Str
+    path : String, optional
         The path to where the output files are saved.
 
     Returns
@@ -90,7 +107,7 @@ def save_dfs(df, root="."):
     df : Pandas DataFrame
         The dataframe, usually a month summary.
         
-    root : Str
+    root : String, optional
         The path to the root directory where the output files are saved.
 
     Returns
