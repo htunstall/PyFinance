@@ -6,7 +6,9 @@ the software.
 __version__ = "1.0.0"
 __author__  = "Harry Tunstall"
 
-import gui 
+import gui
+import database
+import lookup
 
 licence = "PyFinance  Copyright (C) 2022  {}\n\n".format(__author__) + \
           "This program comes with ABSOLUTELY NO WARRANTY\n" + \
