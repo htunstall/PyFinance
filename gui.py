@@ -135,65 +135,89 @@ def wipeLog(logbox, start_i="1.0", end_i=tkinter.END):
     logbox.config(state="disabled")
 #------------------------------------------------------------------------------
 
-def enterExpense():
+def logDocument(logbox, doc):
+    # Work out the sinage
+    if doc["Amount"] < 0:
+        sign = "-"
+        amount_val   = -doc["Amount"]
+        courtney_val = -doc["Courtney"]
+    else:
+        sign = " "
+        amount_val   = doc["Amount"]
+        courtney_val = doc["Courtney"]
+        
+    if doc["Recurring"]:
+        rec = "Yes"
+    else:
+        rec = "No"
+    
+    format_str   = "{:<60} | {:<10s} | {:^8s} | {}£{:>8.2f} | {}£{:8.2f} | {:10s}".format(doc["Name"], doc["Date"].strftime("%d-%b-%y"), doc["Category"], sign, amount_val, sign, courtney_val, rec)
+    
+    log(logbox, format_str)
+#--------------------------------------------------------------------------
+
+def logHeader(logbox):
+    header = "{:<60} | {:<10s} | {:<8s} | {:<10s} | {:<10s} | {:<10s}".format("Name of Expense", "Date", "Category", "Amount", "Courtney", "Recurring")
+    row    = "-" * len(header)
+
+    log(logbox, header)
+    log(logbox, row)
+#-------------------------------------------------------------------------- 
+
+def expenseEntryFields(frame, collection, year, month, logbox=None, submit=True, row=0, default_name="", default_day=1, default_category="", default_amount=0, default_courtney=0, default_recurring=False):
     """
-    This is the procedure that defines the GUI for entering new expenses into 
-    the database. It contains sub-procedures to complete all of the necessary
-    actions.
+    Create the expense data entry row
+
+    Parameters
+    ----------
+    frame : tkinter frame object
+        what are we packing the enteries into.
+    submit : Boolean, optional
+        Are we drawing the submit, undo clear buttons on this row. The 
+        default is True.
+    row : integer, optional
+        What row are the widgets drawn in. The default is 0.
 
     Returns
     -------
-    None.
+    name, day, category, amount, courtney, recurring. All tkinter 
+    variables.
 
     """
+    if logbox is None:
+        submit = False
+        
+    dp       = 3 # Decimal places
     #--------------------------------------------------------------------------
-    # Load the database
+    # Tkinter Variables
     #--------------------------------------------------------------------------
-    expenses = database.openCollection()
+    default_fraction = 0.5
+    if default_amount != 0:
+        if default_courtney != 0:
+            default_fraction = default_courtney / default_amount
+        else:
+            default_fraction = 0
     
+    name         = tkinter.StringVar( value = default_name)
+    day          = tkinter.IntVar(    value = default_day)
+    category     = tkinter.StringVar( value = default_category)
+    amount       = tkinter.DoubleVar( value = default_amount)
+    fraction     = tkinter.DoubleVar( value = default_fraction)
+    courtney     = tkinter.DoubleVar( value = default_courtney)
+    recurring    = tkinter.BooleanVar(value = default_recurring)       
     #--------------------------------------------------------------------------
-    # Procedure Variables
-    #--------------------------------------------------------------------------
-    dp = 3 # Decimal places
     
     def update_courtney(*args):
         courtney.set(round(fraction.get() * amount.get(), dp))
-    
+    #--------------------------------------------------------------------------
     
     def update_fraction(*args):
         if amount.get() != 0:
             fraction.set(round(courtney.get() / amount.get(), dp))
         else:
             fraction.set(0.5)
-           
-    def write_header():
-        header = "{:<60} | {:<10s} | {:<8s} | {:<10s} | {:<10s} | {:<10s}".format("Name of Expense", "Date", "Category", "Amount", "Courtney", "Recurring")
-        row    = "-" * len(header)
-    
-        log(logbox, header)
-        log(logbox, row)
-           
-    def log_document(doc):
-        # Work out the sinage
-        if doc["Amount"] < 0:
-            sign = "-"
-            amount_val   = -doc["Amount"]
-            courtney_val = -doc["Courtney"]
-        else:
-            sign = " "
-            amount_val   = doc["Amount"]
-            courtney_val = doc["Courtney"]
-            
-        if doc["Recurring"]:
-            rec = "Yes"
-        else:
-            rec = "No"
-        
-        format_str   = "{:<60} | {:<10s} | {:^8s} | {}£{:>8.2f} | {}£{:8.2f} | {:10s}".format(doc["Name"], doc["Date"].strftime("%d-%b-%y"), doc["Category"], sign, amount_val, sign, courtney_val, rec)
-        
-        log(logbox, format_str)
-        
-    
+    #--------------------------------------------------------------------------
+       
     def submit_expense(expenses):
         # Validation: Is the Category in the list, and is the day valid
         max_day = calendar.monthrange(year.get(), lookup.month_str_to_number[month.get().lower()])[1]
@@ -218,12 +242,11 @@ def enterExpense():
                "Courtney"  : courtney.get(),
                "Recurring" : recurring.get()}
         
-        
         # Submit document to database
         expenses.insert_one(doc)
         
         # Update the most recent enteries   
-        log_document(doc)
+        logDocument(logbox, doc)
         
         # Reset the values
         name.set("")
@@ -233,6 +256,7 @@ def enterExpense():
         
         # Move the focus back to the name field
         name_w.focus_set()
+    #--------------------------------------------------------------------------    
         
     def remove_last_expense(expenses):
         # _id include date submitted, hence able to retreive the last item
@@ -241,25 +265,113 @@ def enterExpense():
         
         # Remove it from the logbox        
         wipeLog(logbox, "end-2l", "end-1l")
-        
+    #--------------------------------------------------------------------------
+    
     def clear_log():
         wipeLog(logbox)
-        write_header()
-
+        logHeader(logbox)
+    #--------------------------------------------------------------------------
     
+    # The fields
+    # Name
+    name_text = tkinter.Label(frame, text="Name")
+    name_w    = tkinter.Entry(frame, textvariable=name, width=70)
+    
+    # Date
+    # Day (int)
+    day_text = tkinter.Label(frame, text="Day")
+    day_w    = tkinter.Entry(frame, textvariable=day, width=5)
+    
+    # Category
+    cat_text = tkinter.Label(frame, text="Category")
+    cat_w    = tkinter.Entry(frame, textvariable=category, width=10)    
+    
+    # Amount
+    amount_text = tkinter.Label(frame, text="Amount")
+    pound_text  = tkinter.Label(frame, text="£")
+    amount_w    = tkinter.Entry(frame, textvariable=amount, width=10)
+    
+    # Courtney
+    # fraction
+    frac_text = tkinter.Label(frame, text="Fraction")
+    frac_w    = tkinter.Entry(frame, textvariable=fraction, width=7)   
+    
+    # value
+    courtney_text   = tkinter.Label(frame, text="Courtney")
+    courtpound_text = tkinter.Label(frame, text="£")
+    courtney_w      = tkinter.Entry(frame, textvariable=courtney, width=10)
+        
+    # Reccuring
+    rec_text = tkinter.Label(frame, text="Reccuring?")
+    rec_w    = tkinter.Checkbutton(frame, variable=recurring, onvalue=True, offvalue=False)
+    
+    
+    name_text.grid(    row=0+row, column=0, sticky="w", padx=xpad, ipadx=ixpad)
+    day_text.grid(     row=0+row, column=1, sticky="w", padx=xpad, ipadx=ixpad)
+    cat_text.grid(     row=0+row, column=2, sticky="w", padx=xpad, ipadx=ixpad)
+    amount_text.grid(  row=0+row, column=3, sticky="w", padx=xpad, ipadx=ixpad, columnspan=2)
+    frac_text.grid(    row=0+row, column=5, sticky="w", padx=xpad, ipadx=ixpad)
+    courtney_text.grid(row=0+row, column=6, sticky="w", padx=xpad, ipadx=ixpad, columnspan=2)
+    rec_text.grid(     row=0+row, column=8, sticky="w", padx=xpad, ipadx=ixpad)
+    
+    name_w.grid(         row=1+row, column=0, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    day_w.grid(          row=1+row, column=1, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    cat_w.grid(          row=1+row, column=2, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    pound_text.grid(     row=1+row, column=3,            pady=ypad,             ipady=iypad)
+    amount_w.grid(       row=1+row, column=4, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    frac_w.grid(         row=1+row, column=5, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    courtpound_text.grid(row=1+row, column=6,            pady=ypad,             ipady=iypad)
+    courtney_w.grid(     row=1+row, column=7, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    rec_w.grid(          row=1+row, column=8, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    
+    #--------------------------------------------------------------------------
+    # Updates as we modify
+    #--------------------------------------------------------------------------
+    amount_w.bind(  "<FocusOut>", update_courtney)
+    frac_w.bind(    "<FocusOut>", update_courtney)
+    courtney_w.bind("<FocusOut>", update_fraction)
+    
+    if submit:
+        # Enter value
+        submit_bt = tkinter.Button(frame, text="Submit", command=lambda:submit_expense(collection))
+        submit_bt.grid(row=1, column=9, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+        
+        # Undo button
+        undo_bt = tkinter.Button(frame, text="Undo", command=lambda:remove_last_expense(collection))
+        undo_bt.grid(row=1, column=10, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+        
+        # Clear Log button
+        clear_bt = tkinter.Button(frame, text="Clear Log", command=clear_log)
+        clear_bt.grid(row=2, column=9, columnspan=2, sticky="nesw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+
+    # Move the focus back to the name field
+    name_w.focus_force()
+
+    return name, day, category, amount, courtney, recurring
+#------------------------------------------------------------------------------
+
+def enterExpense():
+    """
+    This is the procedure that defines the GUI for entering new expenses into 
+    the database. It contains sub-procedures to complete all of the necessary
+    actions.
+
+    Returns
+    -------
+    None.
+
+    """
+    #--------------------------------------------------------------------------
+    # Load the database
+    #--------------------------------------------------------------------------
+    expenses = database.openCollection()
+
     #--------------------------------------------------------------------------
     # Tkinter Variables
     #--------------------------------------------------------------------------
     current_date = datetime.now()
-    name         = tkinter.StringVar()
-    day          = tkinter.IntVar(value=1)
     month        = tkinter.StringVar(value=current_date.strftime("%b"))
     year         = tkinter.IntVar(value=current_date.year)
-    category     = tkinter.StringVar()
-    amount       = tkinter.DoubleVar()
-    fraction     = tkinter.DoubleVar(value=0.5)
-    courtney     = tkinter.DoubleVar()
-    recurring    = tkinter.BooleanVar(value=False)
     #--------------------------------------------------------------------------
     
     expense_window = tkinter.Toplevel()
@@ -293,80 +405,10 @@ def enterExpense():
     expense_values = tkinter.LabelFrame(expense_window, text="Itemised Expense")
     expense_values.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
     
-    # The fields
-    # Name
-    name_text = tkinter.Label(expense_values, text="Name")
-    name_w    = tkinter.Entry(expense_values, textvariable=name, width=70)
     
-    # Date
-    # Day (int)
-    day_text = tkinter.Label(expense_values, text="Day")
-    day_w    = tkinter.Entry(expense_values, textvariable=day, width=5)
+    name, day, category, amount, courtney, recurring = expenseEntryFields(expense_values, expenses, year, month, logbox)
     
-    # Category
-    cat_text = tkinter.Label(expense_values, text="Category")
-    cat_w    = tkinter.Entry(expense_values, textvariable=category, width=10)    
-    
-    # Amount
-    amount_text = tkinter.Label(expense_values, text="Amount")
-    pound_text  = tkinter.Label(expense_values, text="£")
-    amount_w    = tkinter.Entry(expense_values, textvariable=amount, width=10)
-    
-    # Courtney
-    # fraction
-    frac_text = tkinter.Label(expense_values, text="Fraction")
-    frac_w    = tkinter.Entry(expense_values, textvariable=fraction, width=7)   
-    
-    # value
-    courtney_text   = tkinter.Label(expense_values, text="Courtney")
-    courtpound_text = tkinter.Label(expense_values, text="£")
-    courtney_w      = tkinter.Entry(expense_values, textvariable=courtney, width=10)
-    
-    
-    # Reccuring
-    recc_text = tkinter.Label(expense_values, text="Reccuring?")
-    recc_w    = tkinter.Checkbutton(expense_values, variable=recurring, onvalue=True, offvalue=False)
-    # Default to off
-    recc_w.deselect()
-    
-    
-    name_text.grid(    row=0, column=0, sticky="w", padx=xpad, ipadx=ixpad)
-    day_text.grid(     row=0, column=1, sticky="w", padx=xpad, ipadx=ixpad)
-    cat_text.grid(     row=0, column=2, sticky="w", padx=xpad, ipadx=ixpad)
-    amount_text.grid(  row=0, column=3, sticky="w", padx=xpad, ipadx=ixpad, columnspan=2)
-    frac_text.grid(    row=0, column=5, sticky="w", padx=xpad, ipadx=ixpad)
-    courtney_text.grid(row=0, column=6, sticky="w", padx=xpad, ipadx=ixpad, columnspan=2)
-    recc_text.grid(    row=0, column=8, sticky="w", padx=xpad, ipadx=ixpad)
-    
-    name_w.grid(         row=1, column=0, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
-    day_w.grid(          row=1, column=1, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
-    cat_w.grid(          row=1, column=2, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
-    pound_text.grid(     row=1, column=3,            pady=ypad,             ipady=iypad)
-    amount_w.grid(       row=1, column=4, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
-    frac_w.grid(         row=1, column=5, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
-    courtpound_text.grid(row=1, column=6,            pady=ypad,             ipady=iypad)
-    courtney_w.grid(     row=1, column=7, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
-    recc_w.grid(         row=1, column=8, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
-    
-    #--------------------------------------------------------------------------
-    # Updates as we modify
-    #--------------------------------------------------------------------------
-    amount_w.bind(  "<FocusOut>", update_courtney)
-    frac_w.bind(    "<FocusOut>", update_courtney)
-    courtney_w.bind("<FocusOut>", update_fraction)
-    
-    # Enter value
-    submit_bt = tkinter.Button(expense_values, text="Submit", command=lambda:submit_expense(expenses))
-    submit_bt.grid(row=1, column=9, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
-    
-    # Undo button
-    undo_bt = tkinter.Button(expense_values, text="Undo", command=lambda:remove_last_expense(expenses))
-    undo_bt.grid(row=1, column=10, padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
-    
-    # Clear Log button
-    clear_bt = tkinter.Button(expense_values, text="Clear Log", command=clear_log)
-    clear_bt.grid(row=2, column=9, columnspan=2, sticky="nesw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
-    
+
     
     # Pack the log frame
     log_frame.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
@@ -375,20 +417,201 @@ def enterExpense():
     # Fill the log frame
     #--------------------------------------------------------------------------
     # Header
-    write_header()
+    logHeader(logbox)
 
     #--------------------------------------------------------------------------
     # Initial Enteries
     #--------------------------------------------------------------------------
     # Find last date entered, if "# documents < history" list all dates until history length is reached
-    last_docs = expenses.find().sort("Date", -1).limit(history)
+    last_docs = expenses.find({"Recurring" : False}).sort("Date", -1).limit(history)
     dates = list(set([doc["Date"] for doc in last_docs]))
 
-    for doc in expenses.find({"Date" : {"$in" : dates}}).sort("Date", 1):
-        log_document(doc)
+    for doc in expenses.find({"Date" : {"$in" : dates}, "Recurring" : False}).sort("Date", 1):
+        logDocument(logbox, doc)
+#------------------------------------------------------------------------------
+
+def enterRecurringExpenses():
+    def add_recurring_expense(frame, names, days, categories, amounts, courtneys, recurrings):
+        row = frame.grid_size()[1]
+        name, day, category, amount, courtney, recurring = expenseEntryFields(expense_values, expenses, year, month, row=row, submit=False, default_recurring=True)
         
-    # Move the focus back to the name field
-    name_w.focus_force()
+        # Append to each list
+        names.append(name)
+        days.append(day)
+        categories.append(category)
+        amounts.append(amount)
+        courtneys.append(courtney)
+        recurrings.append(recurring)
+        
+    def remove_recurring_expense(frame, names, days, categories, amounts, courtneys, recurrings):
+        # remove from screen:
+        max_row = frame.grid_size()[1] - 3
+        for label in frame.grid_slaves():
+            if int(label.grid_info()["row"]) > max_row:
+                label.grid_remove()
+        
+        # Pop from each list
+        names.pop()
+        days.pop()
+        categories.pop()
+        amounts.pop()
+        courtneys.pop()
+        recurrings.pop()
+        
+    def submit_expenses(expenses, frame, names, year, month, days, categories, amounts, courtneys, recurrings):
+        max_day = calendar.monthrange(year.get(), lookup.month_str_to_number[month.get().lower()])[1]
+        for i, (name, day, category, amount, courtney, recurring) in enumerate(zip(names, days, categories, amounts, courtneys, recurrings)):
+            # Validation: Is the Category in the list, and is the day valid
+            if day.get() < 1 or day.get() > max_day:
+                tkinter.messagebox.showwarning("Warning!", "The entered calendar date `{}` on row {} is not valid".format(day.get(), i+1))
+                frame.focus_force()
+                return
+               
+            if category.get().upper() not in lookup.valid_categories:
+                tkinter.messagebox.showwarning("Warning!", "The entered category `{}` on row {} is not valid".format(category.get(), i+1))
+                frame.focus_force()
+                return
+            
+            if name.get() == "":
+                tkinter.messagebox.showwarning("Warning!", "The name on row {} must be a nonzero length string.".format(i+1))
+                frame.focus_force()
+                return
+            
+            
+            doc = {"Name"     : name.get(),
+                   "Date"     : datetime(year.get(), lookup.month_str_to_number[month.get().lower()], day.get()),
+                   "Category" : category.get(),
+                   "Amount"   : amount.get(),
+                   "Courtney" : courtney.get(),
+                   "Reurring" : recurring.get()}
+            
+            print(doc)
+            #expenses.insert_one(doc)
+        print()
+        
+    def populate_expenses(collection, frame, names, year, month, days, categories, amounts, courtneys, recurrings):
+        last_month_i = lookup.month_str_to_number[month.get().lower()] - 1
+        last_year_i  = year.get()
+        if last_month_i == 0:
+            last_month_i = 12
+            last_year_i -= 1
+            
+        # Get the first and last days
+        min_date = datetime(last_year_i, last_month_i, 1)
+        # Use monthrange to get the last day of the month
+        max_date = datetime(last_year_i, last_month_i, calendar.monthrange(last_year_i, last_month_i)[1]) 
+        
+        # Build the query    
+        query = {"Recurring" : True, "Date" : {"$lte" : max_date, "$gte" : min_date}}
+
+        # Find recurring expenses from the last month, and sort by date
+        reccuring_docs = expenses.find(query).sort("Date", 1)
+    
+
+        for i, doc in enumerate(reccuring_docs):
+            name, day, category, amount, courtney, recurring = expenseEntryFields(expense_values, expenses, year, month, row=i*2, submit=False,
+                                                                                  default_name=doc["Name"],
+                                                                                  default_day=doc["Date"].day,
+                                                                                  default_category=doc["Category"],
+                                                                                  default_amount=doc["Amount"],
+                                                                                  default_courtney=doc["Courtney"],
+                                                                                  default_recurring=doc["Recurring"])
+            
+            names.append(name)
+            days.append(day)
+            categories.append(category)
+            amounts.append(amount)
+            courtneys.append(courtney)
+            recurrings.append(recurring)
+        
+
+    def refresh_expenses(collection, frame, names, year, month, days, categories, amounts, courtneys, recurrings):
+        # Remove enteries first
+        for label in frame.grid_slaves():
+            label.grid_remove()
+        
+        # Reset each list
+        names.clear()
+        days.clear()
+        categories.clear()
+        amounts.clear()
+        courtneys.clear()
+        recurrings.clear()
+        
+        # re-populte the expenses frame
+        populate_expenses(collection, frame, names, year, month, days, categories, amounts, courtneys, recurrings)
+    
+    #--------------------------------------------------------------------------
+    # Load the database
+    #--------------------------------------------------------------------------
+    expenses = database.openCollection()
+    
+    #--------------------------------------------------------------------------
+    # Tkinter Variables
+    #--------------------------------------------------------------------------
+    current_date = datetime.now()
+    month        = tkinter.StringVar(value = current_date.strftime("%b"))
+    year         = tkinter.IntVar(   value = current_date.year)
+    #--------------------------------------------------------------------------
+    
+    expense_window = tkinter.Toplevel()
+    expense_window.focus_set()
+    expense_window.title("Recurring Expenses")
+    expense_window.minsize(width=min_width, height=min_height)
+    expense_window.resizable(width=True, height=True)
+    
+    top_frame = tkinter.Frame(expense_window)
+    top_frame.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    
+    #--------------------------------------------------------------------------
+    # Month/Year Selection
+    #--------------------------------------------------------------------------
+    month_frame = tkinter.LabelFrame(top_frame, text="Month")
+    month_frame.grid(row=0, column=0, sticky="nesw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    
+    month_w     = ttk.Combobox(month_frame, values=lookup.months_list, textvariable=month, width=5)
+    year_w      = ttk.Entry(month_frame, textvariable=year, width=5)
+    month_w.pack(side="left", anchor="w", padx=xpad, ipadx=ixpad)
+    year_w.pack( side="left", anchor="w", padx=xpad, ipadx=ixpad)
+        
+    #--------------------------------------------------------------------------
+    # The Expense Frame
+    #--------------------------------------------------------------------------
+    expense_values = tkinter.LabelFrame(expense_window, text="Recurring Expenses")    
+    expense_values.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+
+    names      = []
+    days       = []
+    categories = []
+    amounts    = []
+    courtneys  = []
+    recurrings = []
+    
+    populate_expenses(expenses, expense_values, names, year, month, days, categories, amounts, courtneys, recurrings)
+        
+    #--------------------------------------------------------------------------
+    # The Refresh Button
+    #--------------------------------------------------------------------------
+    refresh_bt = tkinter.Button(top_frame, text="Refresh Expenses", command=lambda:refresh_expenses(expenses, expense_values, names, year, month, days, categories, amounts, courtneys, recurrings))
+    refresh_bt.grid(row=0, column=1, sticky="nesw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+        
+    #--------------------------------------------------------------------------
+    # The Controls
+    #--------------------------------------------------------------------------    
+    controls = tkinter.Frame(expense_window)
+    controls.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    
+    # add aditional button
+    add_bt = tkinter.Button(controls, text="Add Expense", command=lambda:add_recurring_expense(expense_values, names, days, categories, amounts, courtneys, recurrings))
+    add_bt.pack(side="left", anchor="w", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    
+    # remove button
+    remove_bt = tkinter.Button(controls, text="Remove Expense", command=lambda:remove_recurring_expense(expense_values, names, days, categories, amounts, courtneys, recurrings))
+    remove_bt.pack(side="left", anchor="w", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    
+    # submit button
+    submit_bt = tkinter.Button(controls, text="Submit Expenses", command=lambda:submit_expenses(expenses, expense_values, names, year, month, days, categories, amounts, courtneys, recurrings))
+    submit_bt.pack(side="left", anchor="w", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
 #------------------------------------------------------------------------------
 
 def monthQuery():
@@ -405,9 +628,13 @@ def monthQuery():
         database.save_dfs(df, os.path.join(path.get(), str_ym))
         
         tkinter.messagebox.showinfo("Complete", "The querys have been saved to file.")
+        
+        query_window.focus_force()
 
     def browse_folder():
         path.set(tkinter.filedialog.askdirectory())
+        
+        query_window.focus_force()
         
     #--------------------------------------------------------------------------
     # Load the database
@@ -486,11 +713,13 @@ def openApp(message):
     enter_bt  = tkinter.Button(master_buttons, text="Enter Expense", command=enterExpense)
     enter_bt.pack(side="left", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
     
+    enter_rec_bt = tkinter.Button(master_buttons, text="Enter Recurring Expenses", command=enterRecurringExpenses)
+    enter_rec_bt.pack(side="left", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
+    
     mquery_bt = tkinter.Button(master_buttons, text="Month Query", command=monthQuery)
     mquery_bt.pack(side="left", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
        
     mquery_bt = tkinter.Button(top, text="About", command=about)
     mquery_bt.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
-    
     
     top.mainloop()
