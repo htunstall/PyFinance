@@ -192,6 +192,26 @@ def save_dfs(df, root="."):
     write_html(h_df_value, "harry.html", ["Name", "Date", "Category", "Amount"], value_root)
     
     #--------------------------------------------------------------------------
+    # Recurring Only Enteries
+    #--------------------------------------------------------------------------
+    # Save just harry to html
+    rec_df = df_fmt[df["Recurring"] == True]
+    
+    # Calculate Totals
+    totals = {"Name" : "Totals", "Category": "TOTAL", "Date": "",
+              "Amount"   : "£{:0,.2f}".format(rec_df["Amount_num"].sum()).replace("£-", "-£"),
+              "Courtney" : "£{:0,.2f}".format(rec_df["Courtney_num"].sum()).replace("£-", "-£")}
+
+    # Place them at the end of the dataframe
+    rec_df = rec_df.append(totals, ignore_index=True)
+    
+    rec_df_value = rec_df.sort_values("Amount_num")
+    
+    write_html(rec_df,       "recurring.html", ["Name", "Date", "Category", "Amount", "Courtney"])
+    write_html(rec_df_value, "recurring.html", ["Name", "Date", "Category", "Amount", "Courtney"], value_root)
+    
+    
+    #--------------------------------------------------------------------------
     # Each Category
     #--------------------------------------------------------------------------
     # For each category
