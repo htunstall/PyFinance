@@ -30,6 +30,116 @@ iypad      = 2
 history    = 10   # How many previous values should we show
 #------------------------------------------------------------------------------
 
+class Document():
+    def __init__(self, default_name="", default_day=1, default_category="", default_amount=0, default_courtney=0, default_recurring=False):
+        default_fraction = 0.5
+        if default_amount != 0:
+            if default_courtney != 0:
+                default_fraction = default_courtney / default_amount
+            else:
+                default_fraction = 0
+            
+        self.name         = tkinter.StringVar( value = default_name)
+        self.day          = tkinter.IntVar(    value = default_day)
+        self.category     = tkinter.StringVar( value = default_category)
+        self.amount       = tkinter.DoubleVar( value = default_amount)
+        self.fraction     = tkinter.DoubleVar( value = default_fraction)
+        self.courtney     = tkinter.DoubleVar( value = default_courtney)
+        self.recurring    = tkinter.BooleanVar(value = default_recurring)   
+        
+    def get_name(self):
+        return self.name.get()
+    
+    def get_day(self):
+        return self.day.get()
+    
+    def get_category(self):
+        return self.category.get().upper()
+    
+    def get_amount(self):
+        return self.amount.get()
+    
+    def get_fraction(self):
+        return self.fraction.get()
+    
+    def get_courtney(self):
+        return self.courtney.get()
+    
+    def get_recurring(self):
+        return self.recurring.get()
+    
+    def get_date(self, year, month):
+        """
+        Return a datetime using the day stored in the class.
+
+        Parameters
+        ----------
+        year : Integer
+            The year of the date.
+        month : Integer/String
+            The month of the date as integer or string.
+
+        Returns
+        -------
+        datetime.datetime object
+            The date.
+
+        """
+        # Sanitise inputs
+        if type(month) == str:
+            month = month.lower()[:3]
+            if month in lookup.month_str_to_number.keys():
+                month = lookup.month_str_to_number[month]
+            else:
+                raise KeyError("The month string input is not understood, and cannot be converted")
+        elif type(month) == int:
+            if month < 1 or month > 12:
+                raise Exception("The month integer is not a valid month")
+        else:
+            raise TypeError("The month input is not the correct type")
+            
+        if type(year) != int:
+            raise TypeError("The year must be an integer")
+        
+        return datetime(year, month, self.day.get())
+    
+    def get_document(self, year, month):
+        return {"Name"      : self.get_name(),
+                "Date"      : self.get_date(year, month),
+                "Category"  : self.get_category(),
+                "Amount"    : self.get_amount(),
+                "Courtney"  : self.get_courtney(),
+                "Recurring" : self.get_recurring()}
+
+    def reset(self):
+        self.name.set("")
+        self.amount.set(0.0)
+        self.fraction.set(0.5)
+        self.courtney.set(0.0)
+        
+    def validate(self, year, month, day_w=None, cat_w=None, name_w=None):
+        # Validation: Is the Category in the list, and is the day valid
+        max_day = calendar.monthrange(year, lookup.month_str_to_number[month.lower()])[1]
+        if self.get_day() < 1 or self.get_day() > max_day:
+            tkinter.messagebox.showwarning("Warning!", "The entered calendar date is not valid")
+            if day_w is not None:
+                day_w.focus_force()
+            return False
+           
+        if self.get_category() not in lookup.valid_categories:
+            tkinter.messagebox.showwarning("Warning!", "The entered category is not valid")
+            if cat_w is not None:
+                cat_w.focus_force()
+            return False
+        
+        if self.get_name() == "":
+            tkinter.messagebox.showwarning("Warning!", "The name must be a nonzero length string")
+            if name_w is not None:
+                name_w.focus_force()
+            return False
+        
+        return True
+        
 def log(logbox, message, blank=False, append=None, colour="black", tag_number=0, font="normal", underline=False, show_time=False):
     """
     This procedure writes the message to the log box, with various controlable
@@ -207,57 +317,28 @@ def expenseEntryFields(frame, collection, year, month, logbox=None, submit=True,
     dp       = 3 # Decimal places
     #--------------------------------------------------------------------------
     # Tkinter Variables
-    #--------------------------------------------------------------------------
-    default_fraction = 0.5
-    if default_amount != 0:
-        if default_courtney != 0:
-            default_fraction = default_courtney / default_amount
-        else:
-            default_fraction = 0
-    
-    name         = tkinter.StringVar( value = default_name)
-    day          = tkinter.IntVar(    value = default_day)
-    category     = tkinter.StringVar( value = default_category)
-    amount       = tkinter.DoubleVar( value = default_amount)
-    fraction     = tkinter.DoubleVar( value = default_fraction)
-    courtney     = tkinter.DoubleVar( value = default_courtney)
-    recurring    = tkinter.BooleanVar(value = default_recurring)       
+    #--------------------------------------------------------------------------    
+    document = Document(default_name, default_day, default_category, default_amount, default_courtney, default_recurring)      
     #--------------------------------------------------------------------------
     
     def update_courtney(*args):
-        courtney.set(round(fraction.get() * amount.get(), dp))
+        document.courtney.set(round(document.get_fraction() * document.get_amount(), dp))
     #--------------------------------------------------------------------------
     
     def update_fraction(*args):
-        if amount.get() != 0:
-            fraction.set(round(courtney.get() / amount.get(), dp))
+        if document.get_amount() != 0:
+            document.fraction.set(round(document.get_courtney() / document.get_amount(), dp))
         else:
-            fraction.set(0.5)
+            document.fraction.set(0.5)
     #--------------------------------------------------------------------------
        
     def submit_expense(expenses):
-        # Validation: Is the Category in the list, and is the day valid
-        max_day = calendar.monthrange(year.get(), lookup.month_str_to_number[month.get().lower()])[1]
-        if day.get() < 1 or day.get() > max_day:
-            tkinter.messagebox.showwarning("Warning!", "The entered calendar date is not valid")
-            return
-           
-        if category.get().upper() not in lookup.valid_categories:
-            tkinter.messagebox.showwarning("Warning!", "The entered category is not valid")
-            cat_w.focus_force()
-            return
-        
-        if name.get() == "":
-            tkinter.messagebox.showwarning("Warning!", "The name must be a nonzero length string")
-            name_w.focus_force()
+        if not document.validate(year.get(), month.get(), day_w, cat_w, name_w):
             return
             
-        doc = {"Name"      : name.get(),
-               "Date"      : datetime(year.get(), lookup.month_str_to_number[month.get().lower()], day.get()),
-               "Category"  : category.get().upper(),
-               "Amount"    : amount.get(),
-               "Courtney"  : courtney.get(),
-               "Recurring" : recurring.get()}
+        doc = document.get_document(year.get(), month.get())
+        
+        print(doc)
         
         # Submit document to database
         expenses.insert_one(doc)
@@ -266,10 +347,7 @@ def expenseEntryFields(frame, collection, year, month, logbox=None, submit=True,
         logDocument(logbox, doc)
         
         # Reset the values
-        name.set("")
-        amount.set(0.0)
-        fraction.set(0.5)
-        courtney.set(0.0)
+        document.reset()
         
         # Move the focus back to the name field
         name_w.focus_set()
@@ -292,35 +370,35 @@ def expenseEntryFields(frame, collection, year, month, logbox=None, submit=True,
     # The fields
     # Name
     name_text = tkinter.Label(frame, text="Name")
-    name_w    = tkinter.Entry(frame, textvariable=name, width=70)
+    name_w    = tkinter.Entry(frame, textvariable=document.name, width=70)
     
     # Date
     # Day (int)
     day_text = tkinter.Label(frame, text="Day")
-    day_w    = tkinter.Entry(frame, textvariable=day, width=5)
+    day_w    = tkinter.Entry(frame, textvariable=document.day, width=5)
     
     # Category
     cat_text = tkinter.Label(frame, text="Category")
-    cat_w    = tkinter.Entry(frame, textvariable=category, width=10)    
+    cat_w    = tkinter.Entry(frame, textvariable=document.category, width=10)    
     
     # Amount
     amount_text = tkinter.Label(frame, text="Amount")
     pound_text  = tkinter.Label(frame, text="£")
-    amount_w    = tkinter.Entry(frame, textvariable=amount, width=10)
+    amount_w    = tkinter.Entry(frame, textvariable=document.amount, width=10)
     
     # Courtney
     # fraction
     frac_text = tkinter.Label(frame, text="Fraction")
-    frac_w    = tkinter.Entry(frame, textvariable=fraction, width=7)   
+    frac_w    = tkinter.Entry(frame, textvariable=document.fraction, width=7)   
     
     # value
     courtney_text   = tkinter.Label(frame, text="Courtney")
     courtpound_text = tkinter.Label(frame, text="£")
-    courtney_w      = tkinter.Entry(frame, textvariable=courtney, width=10)
+    courtney_w      = tkinter.Entry(frame, textvariable=document.courtney, width=10)
         
     # Reccuring
     rec_text = tkinter.Label(frame, text="Reccuring?")
-    rec_w    = tkinter.Checkbutton(frame, variable=recurring, onvalue=True, offvalue=False)
+    rec_w    = tkinter.Checkbutton(frame, variable=document.recurring, onvalue=True, offvalue=False)
     
     
     name_text.grid(    row=0+row, column=0, sticky="w", padx=xpad, ipadx=ixpad)
@@ -364,7 +442,7 @@ def expenseEntryFields(frame, collection, year, month, logbox=None, submit=True,
     # Move the focus back to the name field
     name_w.focus_force()
 
-    return name, day, category, amount, courtney, recurring
+    return document
 #------------------------------------------------------------------------------
 
 def enterExpense():
@@ -422,10 +500,7 @@ def enterExpense():
     expense_values = tkinter.LabelFrame(expense_window, text="Itemised Expense")
     expense_values.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
     
-    
-    name, day, category, amount, courtney, recurring = expenseEntryFields(expense_values, expenses, year, month, logbox)
-    
-
+    expenseEntryFields(expense_values, expenses, year, month, logbox)
     
     # Pack the log frame
     log_frame.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
@@ -459,19 +534,14 @@ def enterRecurringExpenses():
     None.
 
     """
-    def add_recurring_expense(frame, names, days, categories, amounts, courtneys, recurrings):
+    def add_recurring_expense(frame, documents):
         row = frame.grid_size()[1]
-        name, day, category, amount, courtney, recurring = expenseEntryFields(expense_values, expenses, year, month, row=row, submit=False, default_recurring=True)
+        document = expenseEntryFields(expense_values, expenses, year, month, row=row, submit=False, default_recurring=True)
         
         # Append to each list
-        names.append(name)
-        days.append(day)
-        categories.append(category)
-        amounts.append(amount)
-        courtneys.append(courtney)
-        recurrings.append(recurring)
+        documents.append(document)
         
-    def remove_recurring_expense(frame, names, days, categories, amounts, courtneys, recurrings):
+    def remove_recurring_expense(frame,documents):
         # remove from screen:
         max_row = frame.grid_size()[1] - 3
         for label in frame.grid_slaves():
@@ -479,45 +549,21 @@ def enterRecurringExpenses():
                 label.grid_remove()
         
         # Pop from each list
-        names.pop()
-        days.pop()
-        categories.pop()
-        amounts.pop()
-        courtneys.pop()
-        recurrings.pop()
+        documents.pop()
         
-    def submit_expenses(expenses, frame, names, year, month, days, categories, amounts, courtneys, recurrings):
-        max_day = calendar.monthrange(year.get(), lookup.month_str_to_number[month.get().lower()])[1]
-        for i, (name, day, category, amount, courtney, recurring) in enumerate(zip(names, days, categories, amounts, courtneys, recurrings)):
-            # Validation: Is the Category in the list, and is the day valid
-            if day.get() < 1 or day.get() > max_day:
-                tkinter.messagebox.showwarning("Warning!", "The entered calendar date `{}` on row {} is not valid".format(day.get(), i+1))
-                frame.focus_force()
-                return
-               
-            if category.get().upper() not in lookup.valid_categories:
-                tkinter.messagebox.showwarning("Warning!", "The entered category `{}` on row {} is not valid".format(category.get(), i+1))
-                frame.focus_force()
+    def submit_expenses(expenses, frame, year, month, documents):
+        for document in documents:
+            if not document.validate(year.get(), month.get(), frame, frame, frame):
                 return
             
-            if name.get() == "":
-                tkinter.messagebox.showwarning("Warning!", "The name on row {} must be a nonzero length string.".format(i+1))
-                frame.focus_force()
-                return
-            
-            
-            doc = {"Name"     : name.get(),
-                   "Date"     : datetime(year.get(), lookup.month_str_to_number[month.get().lower()], day.get()),
-                   "Category" : category.get(),
-                   "Amount"   : amount.get(),
-                   "Courtney" : courtney.get(),
-                   "Reurring" : recurring.get()}
+        for document in documents:
+            doc = document.get_document(year.get(), month.get())
             
             print(doc)
             #expenses.insert_one(doc)
         print()
         
-    def populate_expenses(collection, frame, names, year, month, days, categories, amounts, courtneys, recurrings):
+    def populate_expenses(collection, frame, year, month, documents):
         last_month_i = lookup.month_str_to_number[month.get().lower()] - 1
         last_year_i  = year.get()
         if last_month_i == 0:
@@ -537,37 +583,26 @@ def enterRecurringExpenses():
     
 
         for i, doc in enumerate(reccuring_docs):
-            name, day, category, amount, courtney, recurring = expenseEntryFields(expense_values, expenses, year, month, row=i*2, submit=False,
-                                                                                  default_name=doc["Name"],
-                                                                                  default_day=doc["Date"].day,
-                                                                                  default_category=doc["Category"],
-                                                                                  default_amount=doc["Amount"],
-                                                                                  default_courtney=doc["Courtney"],
-                                                                                  default_recurring=doc["Recurring"])
+             document = expenseEntryFields(expense_values, expenses, year, month, row=i*2, submit=False,
+                                           default_name=doc["Name"],
+                                           default_day=doc["Date"].day,
+                                           default_category=doc["Category"],
+                                           default_amount=doc["Amount"],
+                                           default_courtney=doc["Courtney"],
+                                           default_recurring=doc["Recurring"])
             
-            names.append(name)
-            days.append(day)
-            categories.append(category)
-            amounts.append(amount)
-            courtneys.append(courtney)
-            recurrings.append(recurring)
-        
+             documents.append(document)        
 
-    def refresh_expenses(collection, frame, names, year, month, days, categories, amounts, courtneys, recurrings):
+    def refresh_expenses(collection, frame, year, month, documents):
         # Remove enteries first
         for label in frame.grid_slaves():
             label.grid_remove()
         
         # Reset each list
-        names.clear()
-        days.clear()
-        categories.clear()
-        amounts.clear()
-        courtneys.clear()
-        recurrings.clear()
-        
+        documents.clear()
+
         # re-populte the expenses frame
-        populate_expenses(collection, frame, names, year, month, days, categories, amounts, courtneys, recurrings)
+        populate_expenses(collection, frame, year, month, documents)
     
     #--------------------------------------------------------------------------
     # Load the database
@@ -608,19 +643,15 @@ def enterRecurringExpenses():
     expense_values = tkinter.LabelFrame(expense_window, text="Recurring Expenses")    
     expense_values.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
 
-    names      = []
-    days       = []
-    categories = []
-    amounts    = []
-    courtneys  = []
-    recurrings = []
+    documents = []
+
     
-    populate_expenses(expenses, expense_values, names, year, month, days, categories, amounts, courtneys, recurrings)
+    populate_expenses(expenses, expense_values, year, month, documents)
         
     #--------------------------------------------------------------------------
     # The Refresh Button
     #--------------------------------------------------------------------------
-    refresh_bt = tkinter.Button(top_frame, text="Refresh Expenses", command=lambda:refresh_expenses(expenses, expense_values, names, year, month, days, categories, amounts, courtneys, recurrings))
+    refresh_bt = tkinter.Button(top_frame, text="Refresh Expenses", command=lambda:refresh_expenses(expenses, expense_values, year, month, documents))
     refresh_bt.grid(row=0, column=1, sticky="nesw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
         
     #--------------------------------------------------------------------------
@@ -630,15 +661,15 @@ def enterRecurringExpenses():
     controls.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
     
     # add aditional button
-    add_bt = tkinter.Button(controls, text="Add Expense", command=lambda:add_recurring_expense(expense_values, names, days, categories, amounts, courtneys, recurrings))
+    add_bt = tkinter.Button(controls, text="Add Expense", command=lambda:add_recurring_expense(expense_values, documents))
     add_bt.pack(side="left", anchor="w", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
     
     # remove button
-    remove_bt = tkinter.Button(controls, text="Remove Expense", command=lambda:remove_recurring_expense(expense_values, names, days, categories, amounts, courtneys, recurrings))
+    remove_bt = tkinter.Button(controls, text="Remove Expense", command=lambda:remove_recurring_expense(expense_values, documents))
     remove_bt.pack(side="left", anchor="w", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
     
     # submit button
-    submit_bt = tkinter.Button(controls, text="Submit Expenses", command=lambda:submit_expenses(expenses, expense_values, names, year, month, days, categories, amounts, courtneys, recurrings))
+    submit_bt = tkinter.Button(controls, text="Submit Expenses", command=lambda:submit_expenses(expenses, expense_values, year, month,documents))
     submit_bt.pack(side="left", anchor="w", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
 #------------------------------------------------------------------------------
 
