@@ -338,8 +338,6 @@ def expenseEntryFields(frame, collection, year, month, logbox=None, submit=True,
             
         doc = document.get_document(year.get(), month.get())
         
-        print(doc)
-        
         # Submit document to database
         expenses.insert_one(doc)
         
