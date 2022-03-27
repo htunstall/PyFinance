@@ -8,6 +8,8 @@ import calendar
 import pandas   as pd
 from   datetime import datetime
 
+import lookup
+
 #------------------------------------------------------------------------------
 def openCollection(address="localhost", port=27017):
     """
@@ -53,14 +55,12 @@ def getMonthSummary(month, year, col, path="."):
     Pandas DataFrame with all the enteries for the month.
 
     """
-        
-    month_str_to_number = {"jan" : 1, "feb" : 2, "mar" : 3, "apr" : 4, "may" : 5, "jun" : 6, "jul" : 7, "aug" : 8, "sep" : 9, "oct" : 10, "nov" : 11, "dec" : 12}
     
     # Sanitise inputs
     if type(month) == str:
         month = month.lower()[:3]
-        if month in month_str_to_number.keys():
-            month = month_str_to_number[month]
+        if month in lookup.month_str_to_number.keys():
+            month = lookup.month_str_to_number[month]
         else:
             raise KeyError("The month string input is not understood, and cannot be converted")
     elif type(month) == int:
@@ -147,7 +147,8 @@ def save_dfs(df, root="."):
     
     # Place them at the end of the dataframe
     df_all = df_fmt.append(totals, ignore_index=True)
-    
+    df_all = df_all.sort_values(["Recurring", "Date"], ascending=[False, True])
+        
     df_all_value = df_all.sort_values("Amount_num")
     
     write_html(df_all,       "month-overview.html", ["Name", "Date", "Category", "Amount", "Courtney"])
