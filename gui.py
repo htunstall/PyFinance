@@ -9,6 +9,7 @@ import tkinter
 import tkinter.filedialog
 import tkinter.messagebox
 import calendar
+import platform
 
 from   datetime             import datetime
 from   tkinter              import ttk
@@ -758,6 +759,12 @@ def openApp(message):
         tkinter.messagebox.showinfo("About", message)
         
     top = tkinter.Tk()
+    
+    # If the system is windows set the icon (as this breaks the linux version)
+    system_id = platform.system()
+    if system_id == "Windows":
+        # Set the .ico from the ui folder
+        top.iconbitmap(os.path.abspath(os.path.join("logo", "pyfinance_logo.ico")))
     
     top.title("PyFinance")
     top.minsize(width=min_width, height=min_height)
