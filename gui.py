@@ -469,6 +469,7 @@ def enterExpense():
     #--------------------------------------------------------------------------
     
     expense_window = tkinter.Toplevel()
+    addIcon(expense_window)
     expense_window.focus_set()
     expense_window.title("Expense")
     expense_window.minsize(width=min_width, height=min_height)
@@ -617,6 +618,7 @@ def enterRecurringExpenses():
     #--------------------------------------------------------------------------
     
     expense_window = tkinter.Toplevel()
+    addIcon(expense_window)
     expense_window.focus_set()
     expense_window.title("Recurring Expenses")
     expense_window.minsize(width=min_width, height=min_height)
@@ -709,6 +711,7 @@ def monthQuery():
     #--------------------------------------------------------------------------
     
     query_window = tkinter.Toplevel()
+    addIcon(query_window)
     query_window.focus_set()
     query_window.title("Month Query")
     query_window.minsize(width=min_width, height=min_height)
@@ -741,6 +744,14 @@ def monthQuery():
     path_bt.pack(side="left", anchor="w", padx=xpad, ipadx=ixpad)
 #------------------------------------------------------------------------------
 
+def addIcon(window):
+    # If the system is windows set the icon (as this breaks the linux version)
+    system_id = platform.system()
+    if system_id == "Windows":
+        # Set the .ico from the ui folder
+        window.iconbitmap(os.path.abspath(os.path.join("logo", "pyfinance_logo.ico")))
+#------------------------------------------------------------------------------
+
 def openApp(message):
     """
     This is the top level window and the root for navigating the whole app.
@@ -760,11 +771,7 @@ def openApp(message):
         
     top = tkinter.Tk()
     
-    # If the system is windows set the icon (as this breaks the linux version)
-    system_id = platform.system()
-    if system_id == "Windows":
-        # Set the .ico from the ui folder
-        top.iconbitmap(os.path.abspath(os.path.join("logo", "pyfinance_logo.ico")))
+    addIcon(top)
     
     top.title("PyFinance")
     top.minsize(width=min_width, height=min_height)
