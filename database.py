@@ -11,7 +11,7 @@ from   datetime import datetime
 import lookup
 
 #------------------------------------------------------------------------------
-def openCollection(address="localhost", port=27017):
+def openCollection(address, port):
     """
     Open the collection expenses located in the database finances from the
     MongoDB and return it.
@@ -98,7 +98,7 @@ def getMonthSummary(month, year, col, path="."):
     return df, min_date.strftime("%Y-%m_%B")
 
 #------------------------------------------------------------------------------
-def save_dfs(df, root="."):
+def saveDF(df, root="."):
     """
     Save att the relevent dataframes.
 
@@ -137,22 +137,69 @@ def save_dfs(df, root="."):
     # All Enteries
     #--------------------------------------------------------------------------
     # Save all to csv (all columns)
-    df_fmt.to_csv(os.path.join(root, "month-overview.csv"), index=False)
+    df_fmt.to_csv(os.path.join(root, "overview.csv"), index=False)
     
     # Save all to html
     # Calculate Totals
-    totals = {"Name" : "Totals", "Category": "TOTAL", "Date_fmt": "",
-              "Amount"   : "£{:0,.2f}".format(df_fmt["Amount_num"].sum()).replace("£-", "-£"),
-              "Courtney" : "£{:0,.2f}".format(df_fmt["Courtney_num"].sum()).replace("£-", "-£")}
+    # Total Recurring
+    total_rec_amount   = df_fmt.loc[df_fmt["Recurring"] == True]["Amount_num"].sum()
+    total_rec_courtney = df_fmt.loc[df_fmt["Recurring"] == True]["Courtney_num"].sum()
+    
+    total_rec = {"Name" : "Recurring Expenses Total", "Category": "TOTAL", "Date_fmt": "", "Date": "", "Recurring" : True,
+                 "Amount"   : "£{:0,.2f}".format(total_rec_amount).replace("£-", "-£"),
+                 "Courtney" : "£{:0,.2f}".format(total_rec_courtney).replace("£-", "-£")}
+    
+    
+    total_exp_amount   = df_fmt.loc[df_fmt["Recurring"] == False]["Amount_num"].sum()
+    total_exp_courtney = df_fmt.loc[df_fmt["Recurring"] == False]["Courtney_num"].sum()
+    # Total Expenses
+    total_exp = {"Name" : "Itemised Expenses Total", "Category": "TOTAL", "Date_fmt": "", "Date": "", "Recurring" : False,
+                 "Amount"   : "£{:0,.2f}".format(total_exp_amount).replace("£-", "-£"),
+                 "Courtney" : "£{:0,.2f}".format(total_exp_courtney).replace("£-", "-£")}
+    
+    total_gnd = {"Name" : "Grand Total", "Category": "TOTAL", "Date_fmt": -1, "Date": "", "Recurring" : True,
+                 "Amount":   "£{:0,.2f}".format(total_rec_amount   + total_exp_amount).replace("£-", "-£"),
+                 "Courtney": "£{:0,.2f}".format(total_rec_courtney + total_exp_courtney).replace("£-", "-£")}
     
     # Place them at the end of the dataframe
-    df_all = df_fmt.append(totals, ignore_index=True)
-    df_all = df_all.sort_values(["Recurring", "Date"], ascending=[False, True])
-        
-    df_all_value = df_all.sort_values("Amount_num")
+    df_all = df_fmt.append([total_rec, total_exp, total_gnd], ignore_index=True)
     
-    write_html(df_all,       "month-overview.html", ["Name", "Date", "Category", "Amount", "Courtney"])
-    write_html(df_all_value, "month-overview.html", ["Name", "Date", "Category", "Amount", "Courtney"], value_root)
+    df_all = df_all.sort_values(["Recurring", "Date_fmt"], ascending=[False, True])
+        
+    df_all_value = df_all.sort_values(["Amount_num", "Date_fmt"], ascending=[True, False])
+    
+    write_html(df_all,       "overview.html", ["Name", "Date", "Category", "Amount", "Courtney"])
+    write_html(df_all_value, "overview.html", ["Name", "Date", "Category", "Amount", "Courtney"], value_root)
+    
+    #--------------------------------------------------------------------------
+    # All Positive/Negative Enteries
+    #--------------------------------------------------------------------------
+    # Save all to csv (all columns)
+    df_positive = df_fmt.loc[(df_fmt["Amount_num"] > 0) & (df_fmt["Recurring"] == False)].sort_values("Amount_num")
+    df_negative = df_fmt.loc[(df_fmt["Amount_num"] < 0) & (df_fmt["Recurring"] == False)].sort_values("Amount_num")
+    
+    # Save all to html
+    # Calculate Totals
+    positive_totals = {"Name" : "Totals", "Category": "TOTAL", "Date": "",
+                       "Amount"   : "£{:0,.2f}".format(df_positive["Amount_num"].sum()).replace("£-", "-£"),
+                       "Courtney" : "£{:0,.2f}".format(df_positive["Courtney_num"].sum()).replace("£-", "-£")}
+    
+    negative_totals = {"Name" : "Totals", "Category": "TOTAL", "Date": "",
+                       "Amount"   : "£{:0,.2f}".format(df_negative["Amount_num"].sum()).replace("£-", "-£"),
+                       "Courtney" : "£{:0,.2f}".format(df_negative["Courtney_num"].sum()).replace("£-", "-£")}
+    
+    # Place them at the end of the dataframe
+    df_positive = df_positive.append(positive_totals, ignore_index=True).sort_values("Date", ascending=True)
+    df_positive_value = df_positive.sort_values("Amount_num")
+    
+    df_negative = df_negative.append(negative_totals, ignore_index=True).sort_values("Date", ascending=True)
+    df_negative_value = df_negative.sort_values("Amount_num")
+    
+    write_html(df_positive,       "positive-expenses.html", ["Name", "Date", "Category", "Amount", "Courtney"])
+    write_html(df_positive_value, "positive-expenses.html", ["Name", "Date", "Category", "Amount", "Courtney"], value_root)
+    
+    write_html(df_negative,       "negative-expenses.html", ["Name", "Date", "Category", "Amount", "Courtney"])
+    write_html(df_negative_value, "negative-expenses.html", ["Name", "Date", "Category", "Amount", "Courtney"], value_root)
     
     #--------------------------------------------------------------------------
     # Courtney Only Enteries

@@ -3,7 +3,7 @@ Main module for PyFinance. When executed it will bring up the gui to navigate
 the software.
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__  = "Harry Tunstall"
 
 import gui

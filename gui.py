@@ -444,7 +444,7 @@ def expenseEntryFields(frame, collection, year, month, logbox=None, submit=True,
     return document
 #------------------------------------------------------------------------------
 
-def enterExpense():
+def enterExpense(address, port):
     """
     This is the procedure that defines the GUI for entering new expenses into 
     the database. It contains sub-procedures to complete all of the necessary
@@ -458,7 +458,7 @@ def enterExpense():
     #--------------------------------------------------------------------------
     # Load the database
     #--------------------------------------------------------------------------
-    expenses = database.openCollection()
+    expenses = database.openCollection(address, port)
 
     #--------------------------------------------------------------------------
     # Tkinter Variables
@@ -522,7 +522,7 @@ def enterExpense():
         logDocument(logbox, doc)
 #------------------------------------------------------------------------------
 
-def enterRecurringExpenses():
+def enterRecurringExpenses(address, port):
     """
     This is the procedure that defines the GUI for entering a new months 
     recurring expenses into the database. It looks up the previous months
@@ -554,14 +554,15 @@ def enterRecurringExpenses():
     def submit_expenses(expenses, frame, year, month, documents):
         for document in documents:
             if not document.validate(year.get(), month.get(), frame, frame, frame):
+                tkinter.messagebox.showerror("Failed", "The reccuring expense `{}` contains errors. Please fix them before continuing.".format(document.get_name()))
                 return
             
         for document in documents:
             doc = document.get_document(year.get(), month.get())
-            
-            print(doc)
-            #expenses.insert_one(doc)
-        print()
+            expenses.insert_one(doc)
+
+        
+        tkinter.messagebox.showinfo("Complete", "The reccuring expenses have been added.")
         
     def populate_expenses(collection, frame, year, month, documents):
         last_month_i = lookup.month_str_to_number[month.get().lower()] - 1
@@ -607,7 +608,7 @@ def enterRecurringExpenses():
     #--------------------------------------------------------------------------
     # Load the database
     #--------------------------------------------------------------------------
-    expenses = database.openCollection()
+    expenses = database.openCollection(address, port)
     
     #--------------------------------------------------------------------------
     # Tkinter Variables
@@ -674,7 +675,7 @@ def enterRecurringExpenses():
     submit_bt.pack(side="left", anchor="w", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
 #------------------------------------------------------------------------------
 
-def monthQuery():
+def monthQuery(address, port):
     """
     This defines the GUI for the user to complete a query for a specific month.
 
@@ -685,7 +686,7 @@ def monthQuery():
     """
     def do_query(expenses):
         df, str_ym = database.getMonthSummary(month.get(), year.get(), expenses)
-        database.save_dfs(df, os.path.join(path.get(), str_ym))
+        database.saveDF(df, os.path.join(path.get(), str_ym))
         
         tkinter.messagebox.showinfo("Complete", "The querys have been saved to file.")
         
@@ -699,7 +700,7 @@ def monthQuery():
     #--------------------------------------------------------------------------
     # Load the database
     #--------------------------------------------------------------------------
-    expenses = database.openCollection()
+    expenses = database.openCollection(address, port)
     
     #--------------------------------------------------------------------------
     # Tkinter Variables
@@ -777,17 +778,31 @@ def openApp(message):
     top.minsize(width=min_width, height=min_height)
     top.resizable(width=True, height=True)
     
+    # Database
+     
+    db_address = tkinter.StringVar(value = "192.168.0.22")
+    db_port    = tkinter.IntVar(   value = 27017)
+    
+    db_frame = tkinter.LabelFrame(top, text="Database")
+    db_frame.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)   
+    
+    db_add_entry  = ttk.Entry(db_frame, textvariable=db_address, width=50)
+    db_port_entry = ttk.Entry(db_frame, textvariable=db_port, width=10)
+    
+    db_add_entry.pack(side="left", anchor="w", padx=xpad, ipadx=ixpad)
+    db_port_entry.pack(side="left", anchor="w", padx=xpad, ipadx=ixpad)
+    
     # Buttons
     master_buttons = tkinter.LabelFrame(top, text="Operations")
     master_buttons.pack(side="top", anchor="nw", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
     
-    enter_bt  = tkinter.Button(master_buttons, text="Enter Expense", command=enterExpense)
+    enter_bt  = tkinter.Button(master_buttons, text="Enter Expense", command=lambda:enterExpense(db_address.get(), db_port.get()))
     enter_bt.pack(side="left", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
     
-    enter_rec_bt = tkinter.Button(master_buttons, text="Enter Recurring Expenses", command=enterRecurringExpenses)
+    enter_rec_bt = tkinter.Button(master_buttons, text="Enter Recurring Expenses", command=lambda:enterRecurringExpenses(db_address.get(), db_port.get()))
     enter_rec_bt.pack(side="left", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
     
-    mquery_bt = tkinter.Button(master_buttons, text="Month Query", command=monthQuery)
+    mquery_bt = tkinter.Button(master_buttons, text="Month Query", command=lambda:monthQuery(db_address.get(), db_port.get()))
     mquery_bt.pack(side="left", padx=xpad, pady=ypad,ipadx=ixpad, ipady=iypad)
        
     mquery_bt = tkinter.Button(top, text="About", command=about)
